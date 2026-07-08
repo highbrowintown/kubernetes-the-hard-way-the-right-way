@@ -13,12 +13,16 @@ kubectl create secret generic kubernetes-the-hard-way \
   --from-literal="mykey=mydata"
 ```
 
+**Why:** This creates a Kubernetes Secret named `kubernetes-the-hard-way` with a key-value pair, which will be stored in etcd. Creating a test secret is the standard way to verify that the API server is correctly encrypting sensitive data at rest using the encryption configuration file set up in a previous lab.
+
 Print a hexdump of the `kubernetes-the-hard-way` secret stored in etcd:
 
 ```bash
 ssh root@server \
     'etcdctl get /registry/secrets/default/kubernetes-the-hard-way | hexdump -C'
 ```
+
+**Why:** This retrieves the raw secret data directly from etcd on the server and displays it in hexadecimal format, bypassing the API server's decryption layer. The `hexdump` output should show the encrypted data prefixed with `k8s:enc:aescbc:v1:key1`, which verifies that the secret is actually encrypted at rest rather than stored in plain text, confirming the encryption provider configuration is working correctly.
 
 ```text
 00000000  2f 72 65 67 69 73 74 72  79 2f 73 65 63 72 65 74  |/registry/secret|
@@ -59,11 +63,15 @@ kubectl create deployment nginx \
   --image=nginx:latest
 ```
 
+**Why:** This creates a Kubernetes Deployment that manages a set of replica pods running the nginx web server. Deployments are the primary way to manage stateless applications in Kubernetes, providing rolling updates, self-healing, and scaling capabilities. Creating this deployment verifies that the API server, scheduler, and kubelets can work together to schedule and run containers on worker nodes.
+
 List the pod created by the `nginx` deployment:
 
 ```bash
 kubectl get pods -l app=nginx
 ```
+
+**Why:** This lists all pods with the label `app=nginx`, which should display the single pod created by the deployment. This verifies that the deployment controller successfully created the pod and that the scheduler placed it on a worker node, confirming basic pod scheduling and the `kube-controller-manager` is functioning correctly.
 
 ```bash
 NAME                     READY   STATUS    RESTARTS   AGE
@@ -81,11 +89,15 @@ POD_NAME=$(kubectl get pods -l app=nginx \
   -o jsonpath="{.items[0].metadata.name}")
 ```
 
+**Why:** This captures the exact name of the nginx pod into an environment variable using JSONPath output, allowing subsequent commands to reference it without requiring manual copying. Using JSONPath is the programmatic way to extract specific fields from Kubernetes API objects, which makes automation possible and avoids errors from hardcoded pod names.
+
 Forward port `8080` on your local machine to port `80` of the `nginx` pod:
 
 ```bash
 kubectl port-forward $POD_NAME 8080:80
 ```
+
+**Why:** This establishes a tunnel from local port 8080 to port 80 of the nginx container inside the pod, allowing direct access to the nginx web server from the jumpbox. Port forwarding is useful for debugging and testing individual pods without exposing them to the network via a Service, and this verification step ensures network connectivity to pods is working correctly.
 
 ```text
 Forwarding from 127.0.0.1:8080 -> 80
@@ -97,6 +109,8 @@ In a new terminal make an HTTP request using the forwarding address:
 ```bash
 curl --head http://127.0.0.1:8080
 ```
+
+**Why:** This makes an HTTP HEAD request to the local port-forwarded endpoint, returning the nginx server headers. This confirms that the port-forwarding tunnel is working and that the pod is serving traffic correctly, validating the network path from the jumpbox through the API server to the pod on the worker node.
 
 ```text
 HTTP/1.1 200 OK
@@ -129,6 +143,8 @@ Print the `nginx` pod logs:
 kubectl logs $POD_NAME
 ```
 
+**Why:** This retrieves and displays the logs from the nginx container, showing the HTTP request made during the port-forwarding step. This verifies that the kubelet is properly collecting container logs and that the API server can access them, which is essential for debugging applications running in the cluster.
+
 ```text
 ...
 127.0.0.1 - - [06/Apr/2025:17:17:12 +0000] "HEAD / HTTP/1.1" 200 0 "-" "curl/7.88.1" "-"
@@ -143,6 +159,8 @@ Print the nginx version by executing the `nginx -v` command in the `nginx` conta
 ```bash
 kubectl exec -ti $POD_NAME -- nginx -v
 ```
+
+**Why:** This executes the `nginx -v` command inside the running container and displays the output, verifying that `kubectl exec` works correctly. This functionality is critical for debugging, inspecting container filesystems, and running administrative commands within containers without needing to SSH into the worker node.
 
 ```text
 nginx version: nginx/1.27.4
@@ -159,6 +177,8 @@ kubectl expose deployment nginx \
   --port 80 --type NodePort
 ```
 
+**Why:** This creates a NodePort service that exposes the nginx deployment on a static port (typically in the 30000-32767 range) on every worker node. This verifies that kube-proxy is correctly configured and can route external traffic to the pod, which is the foundation for service discovery and load balancing in Kubernetes.
+
 > The LoadBalancer service type can not be used because your cluster is not configured with [cloud provider integration](https://kubernetes.io/docs/getting-started-guides/scratch/#cloud-provider). Setting up cloud provider integration is out of scope for this tutorial.
 
 Retrieve the node port assigned to the `nginx` service:
@@ -168,6 +188,8 @@ NODE_PORT=$(kubectl get svc nginx \
   --output=jsonpath='{range .spec.ports[0]}{.nodePort}')
 ```
 
+**Why:** This extracts the dynamically assigned NodePort number from the service using JSONPath and stores it in an environment variable. This is necessary because the NodePort is assigned automatically by Kubernetes, and subsequent commands need this port number to access the service.
+
 Retrieve the hostname of the node running the `nginx` pod:
 
 ```bash
@@ -176,11 +198,15 @@ NODE_NAME=$(kubectl get pods \
   -o jsonpath="{.items[0].spec.nodeName}")
 ```
 
+**Why:** This captures the node name where the nginx pod is running, again using JSONPath to extract the specific field. This is needed because the NodePort service can be accessed through any worker node, but using the actual node where the pod runs ensures the service endpoint is functioning correctly.
+
 Make an HTTP request using the IP address and the `nginx` node port:
 
 ```bash
 curl -I http://${NODE_NAME}:${NODE_PORT}
 ```
+
+**Why:** This makes an HTTP request directly to the worker node's IP address and the NodePort, bypassing the API server. This verifies that kube-proxy is correctly forwarding traffic from the NodePort to the nginx pod, confirming the service networking layer is fully operational and pods can be accessed from outside the cluster.
 
 ```text
 Server: nginx/1.27.4

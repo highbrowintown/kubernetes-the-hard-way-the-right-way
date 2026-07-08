@@ -20,11 +20,15 @@ scp \
   root@server:~/
 ```
 
+**Why:** This copies all Kubernetes control plane binaries, client tools, systemd service definitions, and configuration files from the jumpbox to the server machine . These components were downloaded during the prerequisites setup and must be present on the control plane node before installation; the service unit files define how each component should run as a systemd service, and the YAML files contain critical configuration such as scheduler policies and RBAC rules for kubelet authorization .
+
 The commands in this lab must be run on the `server` machine. Login to the `server` machine using the `ssh` command. Example:
 
 ```bash
 ssh root@server
 ```
+
+**Why:** This establishes an SSH connection from the jumpbox to the server machine, where all subsequent control plane bootstrap commands will be executed. The control plane components must run on the designated server node because the API server needs to communicate locally with etcd and the other control plane services use the local kubeconfig files placed on this machine .
 
 ## Provision the Kubernetes Control Plane
 
@@ -33,6 +37,8 @@ Create the Kubernetes configuration directory:
 ```bash
 mkdir -p /etc/kubernetes/config
 ```
+
+**Why:** This creates the standard directory where Kubernetes configuration files, such as the scheduler configuration, will be stored. The control plane components expect their configuration files to be in well-known paths, and this directory convention helps organize multiple configuration artifacts on the control plane node .
 
 ### Install the Kubernetes Controller Binaries
 
@@ -46,6 +52,8 @@ Install the Kubernetes binaries:
     /usr/local/bin/
 }
 ```
+
+**Why:** This moves the Kubernetes binaries from the home directory (where they were copied) to `/usr/local/bin/`, making them executable from anywhere on the system. Installing binaries to a standard location on the system PATH ensures the systemd service files can reference each component by name without specifying full paths, and kubectl becomes available for cluster administration .
 
 ### Configure the Kubernetes API Server
 
@@ -61,12 +69,16 @@ Install the Kubernetes binaries:
 }
 ```
 
+**Why:** This creates the Kubernetes data directory and moves all required certificates, keys, and the encryption configuration into `/var/lib/kubernetes/`. The API server needs the CA certificate to validate client certificates, its own certificate pair for TLS serving, the service account signing key for token generation, and the encryption configuration for decrypting secrets stored in etcd . The directory `/var/lib/kubernetes/` is the standard location where the systemd service expects these files to reside .
+
 Create the `kube-apiserver.service` systemd unit file:
 
 ```bash
 mv kube-apiserver.service \
   /etc/systemd/system/kube-apiserver.service
 ```
+
+**Why:** This moves the API server systemd unit file to the system services directory, registering it with systemd. The service file defines how the API server should run, including command-line arguments that specify certificate paths, authorization modes, admission plugins, etcd endpoints, and service cluster IP ranges . Moving this file to `/etc/systemd/system/` makes the API server manageable with standard systemctl commands.
 
 ### Configure the Kubernetes Controller Manager
 
@@ -76,11 +88,15 @@ Move the `kube-controller-manager` kubeconfig into place:
 mv kube-controller-manager.kubeconfig /var/lib/kubernetes/
 ```
 
+**Why:** This places the controller manager's kubeconfig file in the Kubernetes data directory, where the controller manager service expects to find it. This kubeconfig contains the client certificate and cluster endpoint information needed for the controller manager to authenticate to the API server when performing its reconciliation loops, such as node lifecycle management, replication, and service account token generation .
+
 Create the `kube-controller-manager.service` systemd unit file:
 
 ```bash
 mv kube-controller-manager.service /etc/systemd/system/
 ```
+
+**Why:** This moves the controller manager systemd unit file to the system services directory, registering it with systemd. The service file includes flags for leader election (in HA setups), certificate signing authority, and various controller-specific configuration options, enabling the controller manager to run as a managed background service .
 
 ### Configure the Kubernetes Scheduler
 
@@ -90,11 +106,15 @@ Move the `kube-scheduler` kubeconfig into place:
 mv kube-scheduler.kubeconfig /var/lib/kubernetes/
 ```
 
+**Why:** This places the scheduler's kubeconfig file in the Kubernetes data directory, where the scheduler service expects to find it. This kubeconfig contains the client certificate needed for the scheduler to authenticate to the API server when binding pods to nodes, which is essential for pod scheduling decisions .
+
 Create the `kube-scheduler.yaml` configuration file:
 
 ```bash
 mv kube-scheduler.yaml /etc/kubernetes/config/
 ```
+
+**Why:** This moves the scheduler's configuration file to `/etc/kubernetes/config/`, the standard location for control plane component configurations. The YAML file defines the scheduler's policies, such as algorithm source, score strategies, and leader election behavior, which control how the scheduler selects nodes for pod placement .
 
 Create the `kube-scheduler.service` systemd unit file:
 
@@ -102,19 +122,19 @@ Create the `kube-scheduler.service` systemd unit file:
 mv kube-scheduler.service /etc/systemd/system/
 ```
 
+**Why:** This moves the scheduler systemd unit file to the system services directory, registering it with systemd. The service file points to the scheduler's kubeconfig and configuration file, allowing the scheduler to run as a managed background service that watches the API server for unscheduled pods .
+
 ### Start the Controller Services
 
 ```bash
-{
-  systemctl daemon-reload
+systemctl daemon-reload
 
-  systemctl enable kube-apiserver \
-    kube-controller-manager kube-scheduler
+systemctl enable kube-apiserver kube-controller-manager kube-scheduler
 
-  systemctl start kube-apiserver \
-    kube-controller-manager kube-scheduler
-}
+systemctl start kube-apiserver kube-controller-manager kube-scheduler
 ```
+
+**Why:** This sequence loads all new systemd service definitions, enables the three control plane components to start automatically on boot, and immediately starts them. The `daemon-reload` is necessary because the service unit files were just placed in the systemd directory, and enabling creates the necessary symlinks. Starting the API server first is critical because the controller manager and scheduler depend on the API server being available to function properly .
 
 > Allow up to 10 seconds for the Kubernetes API Server to fully initialize.
 
@@ -124,11 +144,15 @@ You can check if any of the control plane components are active using the `syste
 systemctl is-active kube-apiserver
 ```
 
+**Why:** This checks whether the API server service is currently running and active, returning "active" if the process is up and responding. This quick status check helps verify that the service started successfully after the bootstrap process .
+
 For a more detailed status check, which includes additional process information and log messages, use the `systemctl status` command:
 
 ```bash
 systemctl status kube-apiserver
 ```
+
+**Why:** This displays detailed service information including the process ID, memory usage, and recent log messages from the API server. This is useful for troubleshooting if the service failed to start or is behaving unexpectedly .
 
 If you run into any errors, or want to view the logs for any of the control plane components, use the `journalctl` command. For example, to view the logs for the `kube-apiserver` run the following command:
 
@@ -136,16 +160,19 @@ If you run into any errors, or want to view the logs for any of the control plan
 journalctl -u kube-apiserver
 ```
 
+**Why:** This displays the complete systemd journal logs for the API server service, which is essential for debugging startup failures, certificate issues, or etcd connection problems. The logs contain detailed error messages that help diagnose why the control plane components may not be functioning correctly .
+
 ### Verification
 
 At this point the Kubernetes control plane components should be up and running. Verify this using the `kubectl` command line tool:
 
 ```bash
-kubectl cluster-info \
-  --kubeconfig admin.kubeconfig
+kubectl cluster-info --kubeconfig admin.kubeconfig
 ```
 
-```text
+**Why:** This queries the API server using the admin kubeconfig to display cluster endpoint information, confirming the control plane is reachable and responding correctly .
+
+```bash
 Kubernetes control plane is running at https://127.0.0.1:6443
 ```
 
@@ -161,12 +188,15 @@ The commands in this section will affect the entire cluster and only need to be 
 ssh root@server
 ```
 
+**Why:** This re-establishes the SSH connection to the server machine if it was lost or if you were working from the jumpbox. The RBAC configuration must be applied using the admin kubeconfig on the control plane node where the API server is running .
+
 Create the `system:kube-apiserver-to-kubelet` [ClusterRole](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#role-and-clusterrole) with permissions to access the Kubelet API and perform most common tasks associated with managing pods:
 
 ```bash
-kubectl apply -f kube-apiserver-to-kubelet.yaml \
-  --kubeconfig admin.kubeconfig
+kubectl apply -f kube-apiserver-to-kubelet.yaml --kubeconfig admin.kubeconfig
 ```
+
+**Why:** This applies a ClusterRole and ClusterRoleBinding that grants the API server permission to access Kubelet APIs on worker nodes . The ClusterRole defines permissions for nodes/proxy, nodes/stats, nodes/log, nodes/spec, and nodes/metrics resources, which are needed for kubectl logs, kubectl exec, and metrics collection . This step is necessary because the API server authenticates to Kubelets as the `kubernetes` user using its client certificate, and without this RBAC configuration, operations like `kubectl logs` and `kubectl exec` would fail with permission errors .
 
 ### Verification
 
@@ -175,22 +205,21 @@ At this point the Kubernetes control plane is up and running. Run the following 
 Make a HTTP request for the Kubernetes version info:
 
 ```bash
-curl --cacert ca.crt \
-  https://server.kubernetes.local:6443/version
+curl --cacert ca.crt https://server.kubernetes.local:6443/version
 ```
 
-```text
-{
-  "major": "1",
-  "minor": "32",
-  "gitVersion": "v1.32.3",
-  "gitCommit": "32cc146f75aad04beaaa245a7157eb35063a9f99",
-  "gitTreeState": "clean",
-  "buildDate": "2025-03-11T19:52:21Z",
-  "goVersion": "go1.23.6",
-  "compiler": "gc",
-  "platform": "linux/arm64"
-}
+**Why:** This makes an authenticated HTTPS request to the API server's version endpoint from the jumpbox, verifying that the API server is reachable and responding with the correct version information .
+
+```bash
+"major": "1",
+"minor": "32",
+"gitVersion": "v1.32.3",
+"gitCommit": "32cc146f75aad04beaaa245a7157eb35063a9f99",
+"gitTreeState": "clean",
+"buildDate": "2025-03-11T19:52:21Z",
+"goVersion": "go1.23.6",
+"compiler": "gc",
+"platform": "linux/arm64"
 ```
 
 Next: [Bootstrapping the Kubernetes Worker Nodes](09-bootstrapping-kubernetes-workers.md)

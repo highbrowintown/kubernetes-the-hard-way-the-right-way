@@ -24,6 +24,11 @@ Now that you are logged into the `jumpbox` machine as the `root` user, you will 
 
 ```bash
 apt-get update
+```
+
+**Why:** `apt-get update` is run first because the package index on a fresh machine may be stale, and installing without updating can pull outdated or unavailable package versions. This ensures the package lists are current before trying to install dependencies.
+
+```bash
 apt-get -y install wget curl vim openssl git
 ```
 
@@ -33,8 +38,6 @@ apt-get -y install wget curl vim openssl git
 - `vim` — for editing configuration files, systemd unit files, and YAML manifests on the jumpbox and remote machines.
 - `openssl` — used to generate and inspect the TLS certificates and private keys that secure communication between every Kubernetes component (this is the "hard way" replacement for what `kubeadm` normally automates).
 - `git` — required to clone the tutorial repository itself, which is the next step.
-
-`apt-get update` is run first because the package index on a fresh machine may be stale, and installing without updating can pull outdated or unavailable package versions.
 
 ### Sync GitHub Repository
 
@@ -59,11 +62,11 @@ This will be the working directory for the rest of the tutorial. If you ever get
 pwd
 ```
 
+**Why this matters:** Nearly every command from this point forward is relative to this directory (for example, referencing `downloads-$(dpkg --print-architecture).txt` or the `downloads/` folder). Running commands from the wrong directory is one of the most common sources of "file not found" errors in this tutorial, hence the explicit `pwd` checkpoint.
+
 ```text
 /root/kubernetes-the-hard-way
 ```
-
-**Why this matters:** Nearly every command from this point forward is relative to this directory (for example, referencing `downloads-$(dpkg --print-architecture).txt` or the `downloads/` folder). Running commands from the wrong directory is one of the most common sources of "file not found" errors in this tutorial, hence the explicit `pwd` checkpoint.
 
 ### Download Binaries
 
@@ -220,12 +223,12 @@ At this point `kubectl` is installed and can be verified by running the `kubectl
 kubectl version --client
 ```
 
+**Why verify here:** This confirms `kubectl` is on the `PATH`, executable, and correctly reporting its version — before you're several labs deep and trying to debug whether a later failure is a `kubectl` problem or a cluster problem. `--client` is used because there's no cluster running yet for it to talk to; this only checks the local binary.
+
 ```text
 Client Version: v1.32.3
 Kustomize Version: v5.5.0
 ```
-
-**Why verify here:** This confirms `kubectl` is on the `PATH`, executable, and correctly reporting its version — before you're several labs deep and trying to debug whether a later failure is a `kubectl` problem or a cluster problem. `--client` is used because there's no cluster running yet for it to talk to; this only checks the local binary.
 
 At this point the `jumpbox` has been set up with all the command line tools and utilities necessary to complete the labs in this tutorial.
 

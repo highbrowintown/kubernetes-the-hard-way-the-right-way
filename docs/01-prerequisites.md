@@ -19,9 +19,11 @@ How you provision the machines is up to you, the only requirement is that each m
 cat /etc/os-release
 ```
 
+**Why:** This command displays the operating system identification data, verifying that each machine is running Debian 12 (bookworm) as required by the tutorial. This check is essential because the tutorial's commands, package names, systemd configurations, and file paths are specific to Debian 12—using a different distribution or version would cause compatibility issues with the binaries, package installations, and system configurations throughout the labs.
+
 You should see something similar to the following output:
 
-```text
+```bash
 PRETTY_NAME="Debian GNU/Linux 12 (bookworm)"
 NAME="Debian GNU/Linux"
 VERSION_ID="12"

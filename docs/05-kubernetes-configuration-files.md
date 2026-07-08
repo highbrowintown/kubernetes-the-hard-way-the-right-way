@@ -38,6 +38,8 @@ for host in node-0 node-1; do
 done
 ```
 
+**Why:** This loop generates a kubeconfig file for each worker node's kubelet, establishing how the kubelet will authenticate to the API server. For each node, it defines a cluster endpoint pointing to the API server's HTTPS URL, sets the node's client certificate and key as credentials, and creates a context that ties these together . The `system:node:${host}` username is critical because the Kubernetes Node Authorizer specifically looks for this naming pattern to authorize kubelet API requests, and the certificate's Common Name must match exactly for the authorization to work properly .
+
 Results:
 
 ```text
@@ -73,6 +75,8 @@ Generate a kubeconfig file for the `kube-proxy` service:
 }
 ```
 
+**Why:** This generates a kubeconfig file for the kube-proxy service, which runs on every node and implements Kubernetes service networking via IPVS or iptables. The `system:kube-proxy` username corresponds to a ClusterRoleBinding that grants kube-proxy the necessary permissions to watch endpoint and service objects, and the certificate must be signed by the CA to enable mutual TLS authentication with the API server .
+
 Results:
 
 ```text
@@ -106,6 +110,8 @@ Generate a kubeconfig file for the `kube-controller-manager` service:
     --kubeconfig=kube-controller-manager.kubeconfig
 }
 ```
+
+**Why:** This creates a kubeconfig file for the kube-controller-manager, which manages the suite of controllers that regulate cluster state including node lifecycle, replication, and service accounts. The `system:kube-controller-manager` user has high-level permissions defined in the `system:controller-manager` ClusterRole, and this file ensures the controller manager authenticates to the API server using its client certificate . The kubeconfig is stored on the control plane server because the controller manager runs there as a static pod or system service.
 
 Results:
 
@@ -142,6 +148,8 @@ Generate a kubeconfig file for the `kube-scheduler` service:
 }
 ```
 
+**Why:** This generates a kubeconfig file for the kube-scheduler, which watches newly created pods with no assigned node and selects a suitable node based on resource availability and scheduling policies. The `system:kube-scheduler` user has permissions to bind pods to nodes through its `system:scheduler` ClusterRole, and this configuration allows the scheduler to communicate with the API server using its client certificate for authentication . Like the controller manager, this file resides on the control plane server where the scheduler runs.
+
 Results:
 
 ```text
@@ -176,6 +184,8 @@ Generate a kubeconfig file for the `admin` user:
 }
 ```
 
+**Why:** This generates a kubeconfig for the `admin` user, which is used by the cluster administrator to manage the Kubernetes cluster via `kubectl`. Unlike component kubeconfigs, this one points to `127.0.0.1:6443` because the admin user will typically run kubectl directly on the control plane server, and this local address ensures the connection works even if external hostname resolution fails . The admin certificate is associated with the `system:masters` group through its certificate organization field, granting it full, unrestricted access to the API server for all operations .
+
 Results:
 
 ```text
@@ -198,6 +208,8 @@ for host in node-0 node-1; do
 done
 ```
 
+**Why:** This loop creates the necessary directories on each worker node and copies the kubeconfig files to their expected locations. The kube-proxy kubeconfig goes to `/var/lib/kube-proxy/kubeconfig` because the kube-proxy systemd service or container reads it from this path, and the node-specific kubelet kubeconfig goes to `/var/lib/kubelet/kubeconfig` as this is the default location where the kubelet service expects its configuration file . Each node receives its own node-specific kubelet kubeconfig and shares the same kube-proxy kubeconfig for the networking proxy service.
+
 Copy the `kube-controller-manager` and `kube-scheduler` kubeconfig files to the `server` machine:
 
 ```bash
@@ -206,5 +218,7 @@ scp admin.kubeconfig \
   kube-scheduler.kubeconfig \
   root@server:~/
 ```
+
+**Why:** This copies the control plane component kubeconfig files to the server machine's home directory, along with the admin kubeconfig for cluster administration from the control plane. These files are placed in the `~/.kube/config` location or referenced by the component manifests when the controller manager, scheduler, and other control plane components start up . The admin kubeconfig is particularly useful here because you can use it from the server to verify the cluster is operational before proceeding to install the networking layer.
 
 Next: [Generating the Data Encryption Config and Key](06-data-encryption-keys.md)

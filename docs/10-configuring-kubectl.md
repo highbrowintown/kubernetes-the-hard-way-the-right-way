@@ -15,6 +15,8 @@ curl --cacert ca.crt \
   https://server.kubernetes.local:6443/version
 ```
 
+**Why:** This command verifies that the Kubernetes API server is reachable from the jumpbox machine and that the TLS certificate is trusted by using the CA certificate . This check confirms both the network connectivity and the hostname resolution before generating the kubeconfig, preventing configuration errors that would occur if the API server were unreachable.
+
 ```text
 {
   "major": "1",
@@ -49,8 +51,10 @@ Generate a kubeconfig file suitable for authenticating as the `admin` user:
   kubectl config use-context kubernetes-the-hard-way
 }
 ```
-The results of running the command above should create a kubeconfig file in the default location `~/.kube/config` used by the  `kubectl` commandline tool. This also means you can run the `kubectl` command without specifying a config.
 
+**Why:** This sequence of commands generates a kubeconfig for the `admin` user by first defining a cluster entry with the API server endpoint and embedding the CA certificate, then setting the admin user's client certificate and private key as credentials . The context binds the cluster and user together, and switching to it makes this configuration the default, placing the file at `~/.kube/config` for seamless `kubectl` usage from the jumpbox . This differs from the admin kubeconfig generated on the server, which used `127.0.0.1:6443` and was stored with a custom filename—this version uses `server.kubernetes.local` so it works remotely.
+
+The results of running the command above should create a kubeconfig file in the default location `~/.kube/config` used by the  `kubectl` commandline tool. This also means you can run the `kubectl` command without specifying a config.
 
 ## Verification
 
@@ -59,6 +63,8 @@ Check the version of the remote Kubernetes cluster:
 ```bash
 kubectl version
 ```
+
+**Why:** This command confirms that `kubectl` can communicate with the API server using the newly generated default kubeconfig, displaying both client and server version information. The server version should match the Kubernetes version installed during the control plane bootstrap, verifying successful connectivity .
 
 ```text
 Client Version: v1.32.3
@@ -71,6 +77,8 @@ List the nodes in the remote Kubernetes cluster:
 ```bash
 kubectl get nodes
 ```
+
+**Why:** This lists all worker nodes registered in the cluster, verifying that both `node-0` and `node-1` have successfully joined and are reporting as `Ready` . This confirms the worker node bootstrap process was successful and the cluster is fully operational with all expected nodes.
 
 ```
 NAME     STATUS   ROLES    AGE    VERSION
