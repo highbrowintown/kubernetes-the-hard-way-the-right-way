@@ -52,27 +52,25 @@ node-1.kubeconfig
 Generate a kubeconfig file for the `kube-proxy` service:
 
 ```bash
-{
-  kubectl config set-cluster kubernetes-the-hard-way \
-    --certificate-authority=ca.crt \
-    --embed-certs=true \
-    --server=https://server.kubernetes.local:6443 \
-    --kubeconfig=kube-proxy.kubeconfig
+kubectl config set-cluster kubernetes-the-hard-way \
+  --certificate-authority=ca.crt \
+  --embed-certs=true \
+  --server=https://server.kubernetes.local:6443 \
+  --kubeconfig=kube-proxy.kubeconfig
 
-  kubectl config set-credentials system:kube-proxy \
-    --client-certificate=kube-proxy.crt \
-    --client-key=kube-proxy.key \
-    --embed-certs=true \
-    --kubeconfig=kube-proxy.kubeconfig
+kubectl config set-credentials system:kube-proxy \
+  --client-certificate=kube-proxy.crt \
+  --client-key=kube-proxy.key \
+  --embed-certs=true \
+  --kubeconfig=kube-proxy.kubeconfig
 
-  kubectl config set-context default \
-    --cluster=kubernetes-the-hard-way \
-    --user=system:kube-proxy \
-    --kubeconfig=kube-proxy.kubeconfig
+kubectl config set-context default \
+  --cluster=kubernetes-the-hard-way \
+  --user=system:kube-proxy \
+  --kubeconfig=kube-proxy.kubeconfig
 
-  kubectl config use-context default \
-    --kubeconfig=kube-proxy.kubeconfig
-}
+kubectl config use-context default \
+  --kubeconfig=kube-proxy.kubeconfig
 ```
 
 **Why:** This generates a kubeconfig file for the kube-proxy service, which runs on every node and implements Kubernetes service networking via IPVS or iptables. The `system:kube-proxy` username corresponds to a ClusterRoleBinding that grants kube-proxy the necessary permissions to watch endpoint and service objects, and the certificate must be signed by the CA to enable mutual TLS authentication with the API server .
@@ -88,27 +86,25 @@ kube-proxy.kubeconfig
 Generate a kubeconfig file for the `kube-controller-manager` service:
 
 ```bash
-{
-  kubectl config set-cluster kubernetes-the-hard-way \
-    --certificate-authority=ca.crt \
-    --embed-certs=true \
-    --server=https://server.kubernetes.local:6443 \
-    --kubeconfig=kube-controller-manager.kubeconfig
+kubectl config set-cluster kubernetes-the-hard-way \
+  --certificate-authority=ca.crt \
+  --embed-certs=true \
+  --server=https://server.kubernetes.local:6443 \
+  --kubeconfig=kube-controller-manager.kubeconfig
 
-  kubectl config set-credentials system:kube-controller-manager \
-    --client-certificate=kube-controller-manager.crt \
-    --client-key=kube-controller-manager.key \
-    --embed-certs=true \
-    --kubeconfig=kube-controller-manager.kubeconfig
+kubectl config set-credentials system:kube-controller-manager \
+  --client-certificate=kube-controller-manager.crt \
+  --client-key=kube-controller-manager.key \
+  --embed-certs=true \
+  --kubeconfig=kube-controller-manager.kubeconfig
 
-  kubectl config set-context default \
-    --cluster=kubernetes-the-hard-way \
-    --user=system:kube-controller-manager \
-    --kubeconfig=kube-controller-manager.kubeconfig
+kubectl config set-context default \
+  --cluster=kubernetes-the-hard-way \
+  --user=system:kube-controller-manager \
+  --kubeconfig=kube-controller-manager.kubeconfig
 
-  kubectl config use-context default \
-    --kubeconfig=kube-controller-manager.kubeconfig
-}
+kubectl config use-context default \
+  --kubeconfig=kube-controller-manager.kubeconfig
 ```
 
 **Why:** This creates a kubeconfig file for the kube-controller-manager, which manages the suite of controllers that regulate cluster state including node lifecycle, replication, and service accounts. The `system:kube-controller-manager` user has high-level permissions defined in the `system:controller-manager` ClusterRole, and this file ensures the controller manager authenticates to the API server using its client certificate . The kubeconfig is stored on the control plane server because the controller manager runs there as a static pod or system service.
@@ -125,27 +121,25 @@ kube-controller-manager.kubeconfig
 Generate a kubeconfig file for the `kube-scheduler` service:
 
 ```bash
-{
-  kubectl config set-cluster kubernetes-the-hard-way \
-    --certificate-authority=ca.crt \
-    --embed-certs=true \
-    --server=https://server.kubernetes.local:6443 \
-    --kubeconfig=kube-scheduler.kubeconfig
+kubectl config set-cluster kubernetes-the-hard-way \
+  --certificate-authority=ca.crt \
+  --embed-certs=true \
+  --server=https://server.kubernetes.local:6443 \
+  --kubeconfig=kube-scheduler.kubeconfig
 
-  kubectl config set-credentials system:kube-scheduler \
-    --client-certificate=kube-scheduler.crt \
-    --client-key=kube-scheduler.key \
-    --embed-certs=true \
-    --kubeconfig=kube-scheduler.kubeconfig
+kubectl config set-credentials system:kube-scheduler \
+  --client-certificate=kube-scheduler.crt \
+  --client-key=kube-scheduler.key \
+  --embed-certs=true \
+  --kubeconfig=kube-scheduler.kubeconfig
 
-  kubectl config set-context default \
-    --cluster=kubernetes-the-hard-way \
-    --user=system:kube-scheduler \
-    --kubeconfig=kube-scheduler.kubeconfig
+kubectl config set-context default \
+  --cluster=kubernetes-the-hard-way \
+  --user=system:kube-scheduler \
+  --kubeconfig=kube-scheduler.kubeconfig
 
-  kubectl config use-context default \
-    --kubeconfig=kube-scheduler.kubeconfig
-}
+kubectl config use-context default \
+  --kubeconfig=kube-scheduler.kubeconfig
 ```
 
 **Why:** This generates a kubeconfig file for the kube-scheduler, which watches newly created pods with no assigned node and selects a suitable node based on resource availability and scheduling policies. The `system:kube-scheduler` user has permissions to bind pods to nodes through its `system:scheduler` ClusterRole, and this configuration allows the scheduler to communicate with the API server using its client certificate for authentication . Like the controller manager, this file resides on the control plane server where the scheduler runs.
@@ -165,36 +159,36 @@ kubectl config set-cluster kubernetes-the-hard-way \
   --certificate-authority=ca.crt \
   --embed-certs=true \
   --server=https://server.kubernetes.local:6443 \
-  --kubeconfig=kube-proxy.kubeconfig
+  --kubeconfig=admin.kubeconfig
 ```
 
-**Why:** Defines the cluster entry inside `kube-proxy.kubeconfig` — the API server's address and the CA certificate needed to verify it. `--embed-certs=true` writes the actual certificate bytes into the kubeconfig file itself rather than a file path reference, so the resulting file is self-contained and portable to the node without needing `ca.crt` alongside it.
+**Why:** Defines the cluster entry inside `admin.kubeconfig` — the API server's address and the CA certificate needed to verify it. `--embed-certs=true` writes the actual certificate bytes into the kubeconfig file itself rather than a file path reference, so the resulting file is self-contained and portable.
 
 ```bash
-kubectl config set-credentials system:kube-proxy \
-  --client-certificate=kube-proxy.crt \
-  --client-key=kube-proxy.key \
+kubectl config set-credentials admin \
+  --client-certificate=admin.crt \
+  --client-key=admin.key \
   --embed-certs=true \
-  --kubeconfig=kube-proxy.kubeconfig
+  --kubeconfig=admin.kubeconfig
 ```
 
-**Why:** Adds kube-proxy's client certificate and key as a named credential. The `system:kube-proxy` identity corresponds to a ClusterRoleBinding that grants kube-proxy permission to watch Service and Endpoints objects, which it needs to build its iptables/IPVS rules.
+**Why:** Adds the admin user's client certificate and key as a named credential. This certificate's Common Name/Organization (typically `system:masters`) grants full cluster-admin privileges, which is why this file is used for manual cluster verification from the `server` machine rather than for any specific control plane component.
 
 ```bash
 kubectl config set-context default \
   --cluster=kubernetes-the-hard-way \
-  --user=system:kube-proxy \
-  --kubeconfig=kube-proxy.kubeconfig
+  --user=admin \
+  --kubeconfig=admin.kubeconfig
 ```
 
-**Why:** Ties the cluster and credential entries together into a named context so `kube-proxy.kubeconfig` knows which cluster to talk to using which identity.
+**Why:** Ties the cluster and credential entries together into a named context so `admin.kubeconfig` knows which cluster to talk to using which identity.
 
 ```bash
 kubectl config use-context default \
-  --kubeconfig=kube-proxy.kubeconfig
+  --kubeconfig=admin.kubeconfig
 ```
 
-**Why:** Sets this as the active context in the file, so kube-proxy doesn't need to specify `--context` explicitly when it starts up and reads this kubeconfig.
+**Why:** Sets this as the active context in the file, so `kubectl --kubeconfig admin.kubeconfig` commands (used throughout later labs to verify the cluster) don't need `--context` specified separately.
 
 Results:
 
