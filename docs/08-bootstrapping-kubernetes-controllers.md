@@ -58,18 +58,20 @@ Install the Kubernetes binaries:
 ### Configure the Kubernetes API Server
 
 ```bash
-{
-  mkdir -p /var/lib/kubernetes/
-
-  mv ca.crt ca.key \
-    kube-api-server.key kube-api-server.crt \
-    service-accounts.key service-accounts.crt \
-    encryption-config.yaml \
-    /var/lib/kubernetes/
-}
+mkdir -p /var/lib/kubernetes/
 ```
 
-**Why:** This creates the Kubernetes data directory and moves all required certificates, keys, and the encryption configuration into `/var/lib/kubernetes/`. The API server needs the CA certificate to validate client certificates, its own certificate pair for TLS serving, the service account signing key for token generation, and the encryption configuration for decrypting secrets stored in etcd . The directory `/var/lib/kubernetes/` is the standard location where the systemd service expects these files to reside .
+**Why:** Creates the directory where all control plane certificates, keys, and the encryption configuration will live. This is the fixed path the `kube-apiserver`, `kube-controller-manager`, and `kube-scheduler` systemd unit files all point to.
+
+```bash
+mv ca.crt ca.key \
+  kube-api-server.key kube-api-server.crt \
+  service-accounts.key service-accounts.crt \
+  encryption-config.yaml \
+  /var/lib/kubernetes/
+```
+
+**Why:** Moves every credential the control plane needs into that directory. `ca.crt` lets the API server validate client certificates presented by kubelets and other components; `kube-api-server.key`/`kube-api-server.crt` are the API server's own TLS pair for serving HTTPS; `service-accounts.key`/`service-accounts.crt` are used by `kube-controller-manager` to sign and verify service account tokens; and `encryption-config.yaml` tells the API server how to encrypt Secrets at rest in etcd. `ca.key` is included here not for the API server, but because `kube-controller-manager` (which also runs on this machine) uses it via `--cluster-signing-cert-file`/`--cluster-signing-key-file` to sign certificates issued through the CertificateSigningRequest API.
 
 Create the `kube-apiserver.service` systemd unit file:
 
@@ -128,13 +130,21 @@ mv kube-scheduler.service /etc/systemd/system/
 
 ```bash
 systemctl daemon-reload
+```
 
+**Why:** Tells systemd to re-read unit files on disk, picking up the three service files just copied into `/etc/systemd/system/`.
+
+```bash
 systemctl enable kube-apiserver kube-controller-manager kube-scheduler
+```
 
+**Why:** Creates the symlinks that make all three control plane services start automatically on every future boot.
+
+```bash
 systemctl start kube-apiserver kube-controller-manager kube-scheduler
 ```
 
-**Why:** This sequence loads all new systemd service definitions, enables the three control plane components to start automatically on boot, and immediately starts them. The `daemon-reload` is necessary because the service unit files were just placed in the systemd directory, and enabling creates the necessary symlinks. Starting the API server first is critical because the controller manager and scheduler depend on the API server being available to function properly .
+**Why:** Starts all three now. Listing them together is safe because `kube-controller-manager` and `kube-scheduler` both depend on `kube-apiserver` being reachable to do their jobs, and systemd will bring them up in an order where the API server is available first.
 
 > Allow up to 10 seconds for the Kubernetes API Server to fully initialize.
 

@@ -21,20 +21,15 @@ Every certificate authority starts with a private key and root certificate. In t
 Generate the CA configuration file, certificate, and private key:
 
 ```bash
-{
-  openssl genrsa -out ca.key 4096
-  openssl req -x509 -new -sha512 -noenc \
-    -key ca.key -days 3653 \
-    -config ca.conf \
-    -out ca.crt
-}
+openssl genrsa -out ca.key 4096
+openssl req -x509 -new -sha512 -noenc -key ca.key -days 3653 -config ca.conf -out ca.crt
 ```
 
 **Why:** This block generates the Certificate Authority's private key using the RSA algorithm with 4096-bit encryption, then creates a self-signed X.509 root certificate that will be valid for approximately 10 years (3653 days) . The `-noenc` flag prevents encryption of the private key, allowing it to be used without a passphrase during automated cluster provisioning. This CA certificate serves as the root of trust for all Kubernetes component certificates generated later in this tutorial .
 
 Results:
 
-```txt
+```bash
 ca.crt ca.key
 ```
 
@@ -60,16 +55,9 @@ certs=(
 for i in ${certs[*]}; do
   openssl genrsa -out "${i}.key" 4096
 
-  openssl req -new -key "${i}.key" -sha256 \
-    -config "ca.conf" -section ${i} \
-    -out "${i}.csr"
+  openssl req -new -key "${i}.key" -sha256 -config "ca.conf" -section ${i} -out "${i}.csr"
 
-  openssl x509 -req -days 3653 -in "${i}.csr" \
-    -copy_extensions copyall \
-    -sha256 -CA "ca.crt" \
-    -CAkey "ca.key" \
-    -CAcreateserial \
-    -out "${i}.crt"
+  openssl x509 -req -days 3653 -in "${i}.csr" -copy_extensions copyall -sha256 -CA "ca.crt" -CAkey "ca.key" -CAcreateserial -out "${i}.crt"
 done
 ```
 
@@ -95,11 +83,9 @@ for host in node-0 node-1; do
 
   scp ca.crt root@${host}:/var/lib/kubelet/
 
-  scp ${host}.crt \
-    root@${host}:/var/lib/kubelet/kubelet.crt
+  scp ${host}.crt root@${host}:/var/lib/kubelet/kubelet.crt
 
-  scp ${host}.key \
-    root@${host}:/var/lib/kubelet/kubelet.key
+  scp ${host}.key root@${host}:/var/lib/kubelet/kubelet.key
 done
 ```
 
@@ -108,14 +94,10 @@ done
 Copy the appropriate certificates and private keys to the `server` machine:
 
 ```bash
-scp \
-  ca.key ca.crt \
-  kube-api-server.key kube-api-server.crt \
-  service-accounts.key service-accounts.crt \
-  root@server:~/
+scp ca.key ca.crt kube-api-server.key kube-api-server.crt service-accounts.key service-accounts.crt root@server:~/
 ```
 
-**Why:** This copies the CA private key, CA certificate, API server certificate pair, and service account certificate pair to the `server` machine's home directory. The API server needs its certificate to serve TLS-encrypted HTTPS traffic to clients, the CA certificate to validate client certificates presented by kubelets and other components, and the CA private key is required because the API server must be able to validate and sign certificates . The service account certificates are placed on the server because the kube-controller-manager (which runs on the control plane) uses the service account key pair to generate and sign service account tokens for pods .
+**Why:** This copies the CA private key, CA certificate, API server certificate pair, and service account certificate pair to the `server` machine's home directory. The API server needs its own certificate to serve TLS-encrypted HTTPS traffic to clients, and the CA certificate to validate client certificates presented by kubelets and other components — validating a certificate only ever requires the CA's public certificate, not its private key. The CA private key is copied here because `kube-controller-manager`, which also runs on this machine, uses it (via `--cluster-signing-cert-file` and `--cluster-signing-key-file`) to sign new certificates when the CertificateSigningRequest API is used, not because the API server itself needs it. The service account certificates are placed on the server because `kube-controller-manager` uses the service account key pair to generate and sign service account tokens for pods.
 
 > The `kube-proxy`, `kube-controller-manager`, `kube-scheduler`, and `kubelet` client certificates will be used to generate client authentication configuration files in the next lab.
 
