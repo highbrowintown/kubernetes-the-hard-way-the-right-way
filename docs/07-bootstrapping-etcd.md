@@ -31,9 +31,7 @@ ssh root@server
 Extract and install the `etcd` server and the `etcdctl` command line utility:
 
 ```bash
-{
-  mv etcd etcdctl /usr/local/bin/
-}
+mv etcd etcdctl /usr/local/bin/
 ```
 
 **Why:** This moves the etcd and etcdctl binaries from the home directory (where they were copied) to `/usr/local/bin/`, making them executable from anywhere on the system. Installing binaries to a standard location like `/usr/local/bin/` ensures they are on the system PATH, which is necessary because the systemd unit file will reference `etcd` without a full path .
@@ -105,7 +103,6 @@ ETCDCTL_API=3 etcdctl member list \
 
 ```text
 6702b0a34e2cfd39, started, controller, https://127.0.0.1:2380, https://127.0.0.1:2379, false
-```
 ```
 
 Next: [Bootstrapping the Kubernetes Control Plane](08-bootstrapping-kubernetes-controllers.md)

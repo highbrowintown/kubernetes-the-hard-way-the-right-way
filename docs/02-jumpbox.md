@@ -44,8 +44,7 @@ apt-get -y install wget curl vim openssl git
 Now it's time to download a copy of this tutorial which contains the configuration files and templates that will be used build your Kubernetes cluster from the ground up. Clone the Kubernetes The Hard Way git repository using the `git` command:
 
 ```bash
-git clone --depth 1 \
-  https://github.com/kelseyhightower/kubernetes-the-hard-way.git
+git clone --depth 1 https://github.com/highbrowintown/kubernetes-the-hard-way-the-right-way.git
 ```
 
 **Why:** The repository ships more than instructions — it contains the `downloads-amd64.txt`/`downloads-arm64.txt` binary manifests, Kubernetes config templates, and systemd unit templates referenced in later labs. Without cloning it, you'd have to hand-author all of those files yourself. `--depth 1` is used because you only need the latest snapshot of the repo, not its full commit history, which keeps the clone fast and small.
@@ -53,7 +52,7 @@ git clone --depth 1 \
 Change into the `kubernetes-the-hard-way` directory:
 
 ```bash
-cd kubernetes-the-hard-way
+cd kubernetes-the-hard-way-the-right-way
 ```
 
 This will be the working directory for the rest of the tutorial. If you ever get lost run the `pwd` command to verify you are in the right directory when running commands on the `jumpbox`:
@@ -112,11 +111,15 @@ ARCH=$(dpkg --print-architecture)
 
 **Why:** Detects the CPU architecture (`amd64` or `arm64`) of the jumpbox so the correct binary build is extracted and moved in every line that follows. Kubernetes, etcd, containerd, and crictl all publish separate release archives per architecture; using the wrong one produces a binary that simply will not execute.
 
+
+
 ```bash
 mkdir -p downloads/{client,cni-plugins,controller,worker}
 ```
 
 **Why:** Creates four destination folders that map to the four roles binaries will be distributed into: tools run from the jumpbox (`client`), pod networking plugins (`cni-plugins`), control-plane processes (`controller`), and node-level components (`worker`).
+
+
 
 ```bash
 tar -xvf downloads/crictl-v1.32.0-linux-${ARCH}.tar.gz \
