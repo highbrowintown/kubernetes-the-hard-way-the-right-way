@@ -161,30 +161,40 @@ kube-scheduler.kubeconfig
 Generate a kubeconfig file for the `admin` user:
 
 ```bash
-{
-  kubectl config set-cluster kubernetes-the-hard-way \
-    --certificate-authority=ca.crt \
-    --embed-certs=true \
-    --server=https://127.0.0.1:6443 \
-    --kubeconfig=admin.kubeconfig
-
-  kubectl config set-credentials admin \
-    --client-certificate=admin.crt \
-    --client-key=admin.key \
-    --embed-certs=true \
-    --kubeconfig=admin.kubeconfig
-
-  kubectl config set-context default \
-    --cluster=kubernetes-the-hard-way \
-    --user=admin \
-    --kubeconfig=admin.kubeconfig
-
-  kubectl config use-context default \
-    --kubeconfig=admin.kubeconfig
-}
+kubectl config set-cluster kubernetes-the-hard-way \
+  --certificate-authority=ca.crt \
+  --embed-certs=true \
+  --server=https://server.kubernetes.local:6443 \
+  --kubeconfig=kube-proxy.kubeconfig
 ```
 
-**Why:** This generates a kubeconfig for the `admin` user, which is used by the cluster administrator to manage the Kubernetes cluster via `kubectl`. Unlike component kubeconfigs, this one points to `127.0.0.1:6443` because the admin user will typically run kubectl directly on the control plane server, and this local address ensures the connection works even if external hostname resolution fails . The admin certificate is associated with the `system:masters` group through its certificate organization field, granting it full, unrestricted access to the API server for all operations .
+**Why:** Defines the cluster entry inside `kube-proxy.kubeconfig` — the API server's address and the CA certificate needed to verify it. `--embed-certs=true` writes the actual certificate bytes into the kubeconfig file itself rather than a file path reference, so the resulting file is self-contained and portable to the node without needing `ca.crt` alongside it.
+
+```bash
+kubectl config set-credentials system:kube-proxy \
+  --client-certificate=kube-proxy.crt \
+  --client-key=kube-proxy.key \
+  --embed-certs=true \
+  --kubeconfig=kube-proxy.kubeconfig
+```
+
+**Why:** Adds kube-proxy's client certificate and key as a named credential. The `system:kube-proxy` identity corresponds to a ClusterRoleBinding that grants kube-proxy permission to watch Service and Endpoints objects, which it needs to build its iptables/IPVS rules.
+
+```bash
+kubectl config set-context default \
+  --cluster=kubernetes-the-hard-way \
+  --user=system:kube-proxy \
+  --kubeconfig=kube-proxy.kubeconfig
+```
+
+**Why:** Ties the cluster and credential entries together into a named context so `kube-proxy.kubeconfig` knows which cluster to talk to using which identity.
+
+```bash
+kubectl config use-context default \
+  --kubeconfig=kube-proxy.kubeconfig
+```
+
+**Why:** Sets this as the active context in the file, so kube-proxy doesn't need to specify `--context` explicitly when it starts up and reads this kubeconfig.
 
 Results:
 
@@ -201,7 +211,7 @@ for host in node-0 node-1; do
   ssh root@${host} "mkdir -p /var/lib/{kube-proxy,kubelet}"
 
   scp kube-proxy.kubeconfig \
-    root@${host}:/var/lib/kube-proxy/kubeconfig \
+    root@${host}:/var/lib/kube-proxy/kubeconfig
 
   scp ${host}.kubeconfig \
     root@${host}:/var/lib/kubelet/kubeconfig
@@ -219,6 +229,6 @@ scp admin.kubeconfig \
   root@server:~/
 ```
 
-**Why:** This copies the control plane component kubeconfig files to the server machine's home directory, along with the admin kubeconfig for cluster administration from the control plane. These files are placed in the `~/.kube/config` location or referenced by the component manifests when the controller manager, scheduler, and other control plane components start up . The admin kubeconfig is particularly useful here because you can use it from the server to verify the cluster is operational before proceeding to install the networking layer.
+**Why:** This copies the control plane component kubeconfig files to the `server` machine's home directory, along with the admin kubeconfig for cluster administration. They land here only temporarily — in the next lab (`08-bootstrapping-kubernetes-controllers.md`), `kube-controller-manager.kubeconfig` and `kube-scheduler.kubeconfig` get moved into `/var/lib/kubernetes/`, which is the path their systemd unit files actually point to. The admin kubeconfig is useful to have here too, since you can run `kubectl` directly from the server using it to verify the cluster is operational before moving on.
 
 Next: [Generating the Data Encryption Config and Key](06-data-encryption-keys.md)

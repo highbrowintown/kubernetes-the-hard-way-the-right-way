@@ -23,7 +23,7 @@ cat /etc/os-release
 
 You should see something similar to the following output:
 
-```bash
+```text
 PRETTY_NAME="Debian GNU/Linux 12 (bookworm)"
 NAME="Debian GNU/Linux"
 VERSION_ID="12"

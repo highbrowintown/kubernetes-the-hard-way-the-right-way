@@ -19,10 +19,15 @@ Print a hexdump of the `kubernetes-the-hard-way` secret stored in etcd:
 
 ```bash
 ssh root@server \
-    'etcdctl get /registry/secrets/default/kubernetes-the-hard-way | hexdump -C'
+  'ETCDCTL_API=3 etcdctl get /registry/secrets/default/kubernetes-the-hard-way \
+    --endpoints=https://127.0.0.1:2379 \
+    --cacert=/etc/etcd/ca.crt \
+    --cert=/etc/etcd/kube-api-server.crt \
+    --key=/etc/etcd/kube-api-server.key \
+    | hexdump -C'
 ```
 
-**Why:** This retrieves the raw secret data directly from etcd on the server and displays it in hexadecimal format, bypassing the API server's decryption layer. The `hexdump` output should show the encrypted data prefixed with `k8s:enc:aescbc:v1:key1`, which verifies that the secret is actually encrypted at rest rather than stored in plain text, confirming the encryption provider configuration is working correctly.
+**Why:** This retrieves the raw secret data directly from etcd on the server and displays it in hexadecimal format, bypassing the API server's decryption layer entirely. Since `etcd.service` only listens for TLS client connections on `https://127.0.0.1:2379` (no plain-HTTP fallback), this command needs the same CA and certificate pair etcd was configured to trust — the same flags used for `etcdctl member list` in the etcd verification step. The `hexdump` output should show the stored value prefixed with `k8s:enc:aescbc:v1:key1`, confirming the secret is genuinely encrypted at rest rather than stored as plaintext, which validates the encryption provider configured in `encryption-config.yaml` is actually being used.
 
 ```text
 00000000  2f 72 65 67 69 73 74 72  79 2f 73 65 63 72 65 74  |/registry/secret|

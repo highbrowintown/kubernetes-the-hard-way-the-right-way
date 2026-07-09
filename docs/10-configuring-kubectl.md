@@ -34,25 +34,35 @@ curl --cacert ca.crt \
 Generate a kubeconfig file suitable for authenticating as the `admin` user:
 
 ```bash
-{
-  kubectl config set-cluster kubernetes-the-hard-way \
-    --certificate-authority=ca.crt \
-    --embed-certs=true \
-    --server=https://server.kubernetes.local:6443
-
-  kubectl config set-credentials admin \
-    --client-certificate=admin.crt \
-    --client-key=admin.key
-
-  kubectl config set-context kubernetes-the-hard-way \
-    --cluster=kubernetes-the-hard-way \
-    --user=admin
-
-  kubectl config use-context kubernetes-the-hard-way
-}
+kubectl config set-cluster kubernetes-the-hard-way \
+  --certificate-authority=ca.crt \
+  --embed-certs=true \
+  --server=https://server.kubernetes.local:6443
 ```
 
-**Why:** This sequence of commands generates a kubeconfig for the `admin` user by first defining a cluster entry with the API server endpoint and embedding the CA certificate, then setting the admin user's client certificate and private key as credentials . The context binds the cluster and user together, and switching to it makes this configuration the default, placing the file at `~/.kube/config` for seamless `kubectl` usage from the jumpbox . This differs from the admin kubeconfig generated on the server, which used `127.0.0.1:6443` and was stored with a custom filename—this version uses `server.kubernetes.local` so it works remotely.
+**Why:** Defines the cluster entry: the API server's remote address and the CA certificate to verify it. No `--kubeconfig` flag is given, which is what makes this write to the default location, `~/.kube/config`, rather than a named file like the server-side admin kubeconfig used. `server.kubernetes.local` is used here instead of `127.0.0.1` because this command runs from the jumpbox, not from the server itself, so it needs the API server's actual reachable hostname.
+
+```bash
+kubectl config set-credentials admin \
+  --client-certificate=admin.crt \
+  --client-key=admin.key
+```
+
+**Why:** Adds the admin user's client certificate and key as a named credential in the same default kubeconfig.
+
+```bash
+kubectl config set-context kubernetes-the-hard-way \
+  --cluster=kubernetes-the-hard-way \
+  --user=admin
+```
+
+**Why:** Creates a context tying the cluster and user together under one name, so `kubectl` knows which server to talk to using which identity.
+
+```bash
+kubectl config use-context kubernetes-the-hard-way
+```
+
+**Why:** Activates this context as the default, which is what lets every subsequent `kubectl` command in this tutorial run without needing `--kubeconfig` or `--context` flags.
 
 The results of running the command above should create a kubeconfig file in the default location `~/.kube/config` used by the  `kubectl` commandline tool. This also means you can run the `kubectl` command without specifying a config.
 
@@ -80,7 +90,7 @@ kubectl get nodes
 
 **Why:** This lists all worker nodes registered in the cluster, verifying that both `node-0` and `node-1` have successfully joined and are reporting as `Ready` . This confirms the worker node bootstrap process was successful and the cluster is fully operational with all expected nodes.
 
-```
+```text
 NAME     STATUS   ROLES    AGE    VERSION
 node-0   Ready    <none>   10m   v1.32.3
 node-1   Ready    <none>   10m   v1.32.3

@@ -20,12 +20,17 @@ Every certificate authority starts with a private key and root certificate. In t
 
 Generate the CA configuration file, certificate, and private key:
 
-```bash
+```text
 openssl genrsa -out ca.key 4096
+```
+
+**Why:** Generates the Certificate Authority's private key using RSA at 4096 bits. Everything else in the cluster's trust chain ultimately depends on this one key staying private.
+
+```bash
 openssl req -x509 -new -sha512 -noenc -key ca.key -days 3653 -config ca.conf -out ca.crt
 ```
 
-**Why:** This block generates the Certificate Authority's private key using the RSA algorithm with 4096-bit encryption, then creates a self-signed X.509 root certificate that will be valid for approximately 10 years (3653 days) . The `-noenc` flag prevents encryption of the private key, allowing it to be used without a passphrase during automated cluster provisioning. This CA certificate serves as the root of trust for all Kubernetes component certificates generated later in this tutorial .
+**Why:** Creates a self-signed X.509 root certificate from that key, valid for 3653 days (~10 years). `-x509` tells `openssl req` to output a self-signed certificate directly instead of a CSR, since a root CA has no one else to sign it — it signs itself. `-noenc` skips encrypting the private key with a passphrase, so it can be used non-interactively throughout the rest of this tutorial. This certificate becomes the root of trust every other certificate generated later will be signed against.
 
 Results:
 

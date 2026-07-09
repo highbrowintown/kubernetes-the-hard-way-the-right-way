@@ -171,7 +171,7 @@ kubectl cluster-info --kubeconfig admin.kubeconfig
 
 **Why:** This queries the API server using the admin kubeconfig to display cluster endpoint information, confirming the control plane is reachable and responding correctly .
 
-```bash
+```text
 Kubernetes control plane is running at https://127.0.0.1:6443
 ```
 
@@ -209,16 +209,18 @@ curl --cacert ca.crt https://server.kubernetes.local:6443/version
 
 **Why:** This makes an authenticated HTTPS request to the API server's version endpoint from the jumpbox, verifying that the API server is reachable and responding with the correct version information .
 
-```bash
-"major": "1",
-"minor": "32",
-"gitVersion": "v1.32.3",
-"gitCommit": "32cc146f75aad04beaaa245a7157eb35063a9f99",
-"gitTreeState": "clean",
-"buildDate": "2025-03-11T19:52:21Z",
-"goVersion": "go1.23.6",
-"compiler": "gc",
-"platform": "linux/arm64"
+```json
+{
+  "major": "1",
+  "minor": "32",
+  "gitVersion": "v1.32.3",
+  "gitCommit": "32cc146f75aad04beaaa245a7157eb35063a9f99",
+  "gitTreeState": "clean",
+  "buildDate": "2025-03-11T19:52:21Z",
+  "goVersion": "go1.23.6",
+  "compiler": "gc",
+  "platform": "linux/arm64"
+}
 ```
 
 Next: [Bootstrapping the Kubernetes Worker Nodes](09-bootstrapping-kubernetes-workers.md)

@@ -13,13 +13,11 @@ In this section you will gather the information required to create routes in the
 Print the internal IP address and Pod CIDR range for each worker instance:
 
 ```bash
-{
-  SERVER_IP=$(grep server machines.txt | cut -d " " -f 1)
-  NODE_0_IP=$(grep node-0 machines.txt | cut -d " " -f 1)
-  NODE_0_SUBNET=$(grep node-0 machines.txt | cut -d " " -f 4)
-  NODE_1_IP=$(grep node-1 machines.txt | cut -d " " -f 1)
-  NODE_1_SUBNET=$(grep node-1 machines.txt | cut -d " " -f 4)
-}
+SERVER_IP=$(grep server machines.txt | cut -d " " -f 1)
+NODE_0_IP=$(grep node-0 machines.txt | cut -d " " -f 1)
+NODE_0_SUBNET=$(grep node-0 machines.txt | cut -d " " -f 4)
+NODE_1_IP=$(grep node-1 machines.txt | cut -d " " -f 1)
+NODE_1_SUBNET=$(grep node-1 machines.txt | cut -d " " -f 4)
 ```
 
 **Why:** This command block extracts the IP addresses and pod CIDR subnets for each machine from the `machines.txt` file and stores them in environment variables . This data extraction is necessary because the subsequent routing commands need these specific values, and storing them as variables reduces errors and avoids manually typing IP addresses multiple times.
@@ -31,7 +29,7 @@ ssh root@server <<EOF
 EOF
 ```
 
-**Why:** This command adds static routes on the server machine so it can route traffic to pods on both worker nodes by directing packets destined for each node's Pod CIDR range to that node's IP address . This is necessary because the server runs the API server and other control plane components that need to communicate with pods running on worker nodes for log retrieval, exec commands, and service routing. Without these routes, the server cannot reach pods on the worker nodes.
+**Why:** This adds static routes on the server machine directing traffic destined for each worker node's Pod CIDR range through that node's internal IP address. Since neither node's own network interface knows how to reach the *other* node's pod subnet by default, without this route the server has no path to pod IPs on `node-0` or `node-1` at all. This matters for the smoke test in the next lab, where you'll `curl` a pod's IP directly from the server to confirm cross-node pod networking works — that check would fail without this route in place. (Note this is separate from `kubectl exec`/`kubectl logs`, which reach pods via the kubelet's own node IP, not the pod's IP, so those don't depend on this route.)
 
 ```bash
 ssh root@node-0 <<EOF

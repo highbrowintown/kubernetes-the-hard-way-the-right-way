@@ -41,17 +41,25 @@ Extract and install the `etcd` server and the `etcdctl` command line utility:
 ### Configure the etcd Server
 
 ```bash
-{
-  mkdir -p /etc/etcd /var/lib/etcd
-  chmod 700 /var/lib/etcd
-  cp ca.crt kube-api-server.key kube-api-server.crt \
-    /etc/etcd/
-}
+mkdir -p /etc/etcd /var/lib/etcd
 ```
 
-**Why:** This creates the configuration and data directories for etcd, sets restrictive permissions on the data directory (only the root user can access it), and copies the CA certificate, API server certificate, and API server private key to `/etc/etcd/`. The certificate and key are needed because etcd uses mutual TLS authentication to secure communication with the API server, and using the API server's certificate for etcd ensures that only the API server can access the database . The `chmod 700` on `/var/lib/etcd` protects sensitive cluster state data from unauthorized access.
+**Why:** Creates the two directories etcd needs: `/etc/etcd/` for its TLS certificates and `/var/lib/etcd/` for its actual database files.
 
-Each etcd member must have a unique name within an etcd cluster. Set the etcd name to match the hostname of the current compute instance:
+```bash
+chmod 700 /var/lib/etcd
+```
+
+**Why:** Restricts the data directory so only the `root` user can read, write, or enter it, since this directory holds etcd's raw database files, including encrypted Secrets and the keys protecting them.
+
+```bash
+cp ca.crt kube-api-server.key kube-api-server.crt \
+  /etc/etcd/
+```
+
+**Why:** Copies the CA certificate and the API server's certificate pair into `/etc/etcd/`. etcd uses `ca.crt` as its `--trusted-ca-file`/`--peer-trusted-ca-file` to validate incoming connections, and uses `kube-api-server.key`/`kube-api-server.crt` as its own `--cert-file`/`--key-file` (and `--peer-cert-file`/`--peer-key-file`) to serve TLS. Reusing the API server's certificate here, rather than issuing etcd a separate one, works because the API server is etcd's only real client in this single-node setup, and it saves a certificate-generation step. The API server in turn is configured with `--etcd-cafile`, `--etcd-certfile`, and `--etcd-keyfile` pointing at these same three files, so both sides authenticate each other using the shared CA — this is what makes the `https://127.0.0.1:2379` connection between them mutually authenticated rather than just encrypted.
+
+This tutorial runs a single-node etcd cluster with the name hardcoded to `controller` directly in the `etcd.service` unit file below, so no separate step is needed to set it dynamically.
 
 Create the `etcd.service` systemd unit file:
 
@@ -64,27 +72,40 @@ mv etcd.service /etc/systemd/system/
 ### Start the etcd Server
 
 ```bash
-{
-  systemctl daemon-reload
-  systemctl enable etcd
-  systemctl start etcd
-}
+systemctl daemon-reload
 ```
 
-**Why:** This sequence loads the new etcd systemd service definition so systemd recognizes it, enables the service to start automatically on boot, and immediately starts the etcd server. The `daemon-reload` is necessary because the service unit file was just moved into the systemd directory, and `enable` creates the necessary symlinks so etcd runs when the server reboots. Starting etcd now initializes the database and makes it available for the Kubernetes API server to connect to .
+**Why:** Tells systemd to re-read unit files on disk, picking up the `etcd.service` file just moved into `/etc/systemd/system/`.
+
+```bash
+systemctl enable etcd
+```
+
+**Why:** Creates the symlink that makes etcd start automatically on every future boot.
+
+```bash
+systemctl start etcd
+```
+
+**Why:** Starts etcd now, initializing its database and making it available for the Kubernetes API server to connect to on the next lab.
 
 ## Verification
 
 List the etcd cluster members:
 
 ```bash
-etcdctl member list
+ETCDCTL_API=3 etcdctl member list \
+  --endpoints=https://127.0.0.1:2379 \
+  --cacert=/etc/etcd/ca.crt \
+  --cert=/etc/etcd/kube-api-server.crt \
+  --key=/etc/etcd/kube-api-server.key
 ```
 
-**Why:** This uses the etcdctl client to display the members of the etcd cluster, verifying that the etcd server is running and responding to client requests. In this single-node setup, it returns information about the server including its ID, status, peer URL, and client URL . This verification step is critical before proceeding to bootstrap the Kubernetes control plane because the API server depends entirely on a working etcd database.
+**Why:** Connects to etcd's client endpoint and lists its members, verifying the server is running and responding. Because `etcd.service` only listens for TLS client connections on `https://127.0.0.1:2379`, this command must present the same CA and certificate pair etcd was configured to trust — the plain `etcdctl member list` shown in earlier tutorial variants would fail here with a connection error, since there's no unencrypted listener to fall back to. This check is critical before proceeding to bootstrap the control plane, since the API server depends entirely on a working etcd database.
 
 ```text
-6702b0a34e2cfd39, started, controller, http://127.0.0.1:2380, http://127.0.0.1:2379, false
+6702b0a34e2cfd39, started, controller, https://127.0.0.1:2380, https://127.0.0.1:2379, false
+```
 ```
 
 Next: [Bootstrapping the Kubernetes Control Plane](08-bootstrapping-kubernetes-controllers.md)
