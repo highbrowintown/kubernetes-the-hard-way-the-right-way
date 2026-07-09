@@ -7,8 +7,7 @@ In this lab you will bootstrap the Kubernetes control plane. The following compo
 Connect to the `jumpbox` and copy Kubernetes binaries and systemd unit files to the `server` machine:
 
 ```bash
-scp \
-  downloads/controller/kube-apiserver \
+scp downloads/controller/kube-apiserver \
   downloads/controller/kube-controller-manager \
   downloads/controller/kube-scheduler \
   downloads/client/kubectl \
@@ -45,12 +44,7 @@ mkdir -p /etc/kubernetes/config
 Install the Kubernetes binaries:
 
 ```bash
-{
-  mv kube-apiserver \
-    kube-controller-manager \
-    kube-scheduler kubectl \
-    /usr/local/bin/
-}
+mv kube-apiserver kube-controller-manager kube-scheduler kubectl /usr/local/bin/
 ```
 
 **Why:** This moves the Kubernetes binaries from the home directory (where they were copied) to `/usr/local/bin/`, making them executable from anywhere on the system. Installing binaries to a standard location on the system PATH ensures the systemd service files can reference each component by name without specifying full paths, and kubectl becomes available for cluster administration .
@@ -64,11 +58,7 @@ mkdir -p /var/lib/kubernetes/
 **Why:** Creates the directory where all control plane certificates, keys, and the encryption configuration will live. This is the fixed path the `kube-apiserver`, `kube-controller-manager`, and `kube-scheduler` systemd unit files all point to.
 
 ```bash
-mv ca.crt ca.key \
-  kube-api-server.key kube-api-server.crt \
-  service-accounts.key service-accounts.crt \
-  encryption-config.yaml \
-  /var/lib/kubernetes/
+mv ca.crt ca.key kube-api-server.key kube-api-server.crt service-accounts.key service-accounts.crt encryption-config.yaml /var/lib/kubernetes/
 ```
 
 **Why:** Moves every credential the control plane needs into that directory. `ca.crt` lets the API server validate client certificates presented by kubelets and other components; `kube-api-server.key`/`kube-api-server.crt` are the API server's own TLS pair for serving HTTPS; `service-accounts.key`/`service-accounts.crt` are used by `kube-controller-manager` to sign and verify service account tokens; and `encryption-config.yaml` tells the API server how to encrypt Secrets at rest in etcd. `ca.key` is included here not for the API server, but because `kube-controller-manager` (which also runs on this machine) uses it via `--cluster-signing-cert-file`/`--cluster-signing-key-file` to sign certificates issued through the CertificateSigningRequest API.
@@ -76,8 +66,7 @@ mv ca.crt ca.key \
 Create the `kube-apiserver.service` systemd unit file:
 
 ```bash
-mv kube-apiserver.service \
-  /etc/systemd/system/kube-apiserver.service
+mv kube-apiserver.service /etc/systemd/system/kube-apiserver.service
 ```
 
 **Why:** This moves the API server systemd unit file to the system services directory, registering it with systemd. The service file defines how the API server should run, including command-line arguments that specify certificate paths, authorization modes, admission plugins, etcd endpoints, and service cluster IP ranges . Moving this file to `/etc/systemd/system/` makes the API server manageable with standard systemctl commands.
