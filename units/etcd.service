@@ -6,12 +6,18 @@ Documentation=https://github.com/etcd-io/etcd
 Type=notify
 ExecStart=/usr/local/bin/etcd \
   --name controller \
-  --initial-advertise-peer-urls http://127.0.0.1:2380 \
-  --listen-peer-urls http://127.0.0.1:2380 \
-  --listen-client-urls http://127.0.0.1:2379 \
-  --advertise-client-urls http://127.0.0.1:2379 \
+  --cert-file=/etc/etcd/kube-api-server.crt \
+  --key-file=/etc/etcd/kube-api-server.key \
+  --trusted-ca-file=/etc/etcd/ca.crt \
+  --peer-cert-file=/etc/etcd/kube-api-server.crt \
+  --peer-key-file=/etc/etcd/kube-api-server.key \
+  --peer-trusted-ca-file=/etc/etcd/ca.crt \
+  --initial-advertise-peer-urls https://127.0.0.1:2380 \
+  --listen-peer-urls https://127.0.0.1:2380 \
+  --listen-client-urls https://127.0.0.1:2379 \
+  --advertise-client-urls https://127.0.0.1:2379 \
   --initial-cluster-token etcd-cluster-0 \
-  --initial-cluster controller=http://127.0.0.1:2380 \
+  --initial-cluster controller=https://127.0.0.1:2380 \
   --initial-cluster-state new \
   --data-dir=/var/lib/etcd
 Restart=on-failure
