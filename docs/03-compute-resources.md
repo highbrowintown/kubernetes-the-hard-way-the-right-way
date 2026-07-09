@@ -199,6 +199,13 @@ Append the DNS entries from `hosts` to `/etc/hosts`:
 cat hosts >> /etc/hosts
 ```
 
+```bash
+for HOST in server node-0 node-1; do
+  scp hosts root@${HOST}:~/
+  ssh -n root@${HOST} "cat hosts >> /etc/hosts"
+done
+```
+
 **Why:** This appends the generated host entries to the jumpbox's `/etc/hosts` file, enabling the jumpbox to resolve the cluster machines' hostnames locally without requiring a DNS server. This is necessary because the jumpbox needs to communicate with all cluster machines by name throughout the tutorial, and without local resolution, you'd need to use IP addresses manually for every command.
 
 Verify that the `/etc/hosts` file has been updated:
